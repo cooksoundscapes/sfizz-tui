@@ -1,0 +1,105 @@
+#include "jack.hpp"
+#include <cstring>
+#include <iostream>
+
+JackClient::JackClient(const std::string& name)
+    : name_(name) {}
+
+JackClient::~JackClient() {
+    close();
+}
+
+bool JackClient::open() {
+    client_ = jack_client_open(name_.c_str(), JackNullOption, nullptr);
+    if (!client_)
+        return false;
+
+    jack_set_process_callback(client_, &_process, this);
+    jack_on_shutdown(client_, &_shutdown, this);
+
+    // estéreo por padrão
+    audioOut_.resize(2);
+    audioOut_[0] = jack_port_register(
+        client_, "out_L",
+        JACK_DEFAULT_AUDIO_TYPE,
+        JackPortIsOutput, 0);
+
+    audioOut_[1] = jack_port_register(
+        client_, "out_R",
+        JACK_DEFAULT_AUDIO_TYPE,
+        JackPortIsOutput, 0);
+
+    midiIn_ = jack_port_register(
+        client_, "midi_in",
+        JACK_DEFAULT_MIDI_TYPE,
+        JackPortIsInput, 0);
+
+    return true;
+}
+
+bool JackClient::activate() {
+    return jack_activate(client_) == 0;
+}
+
+void JackClient::close() {
+    if (client_) {
+        jack_client_close(client_);
+        client_ = nullptr;
+    }
+}
+
+uint32_t JackClient::sampleRate() const {
+    return jack_get_sample_rate(client_);
+}
+
+uint32_t JackClient::bufferSize() const {
+    return jack_get_buffer_size(client_);
+}
+
+// ====================
+// JACK glue
+// ====================
+int JackClient::_process(jack_nframes_t nframes, void* arg) {
+    return static_cast<JackClient*>(arg)->process(nframes);
+}
+
+void JackClient::_shutdown(void* arg) {
+    std::cerr << "JACK shutdown\n";
+    static_cast<JackClient*>(arg)->client_ = nullptr;
+}
+
+int JackClient::process(jack_nframes_t nframes) {
+    // 1. MIDI primeiro (sempre)
+    void* midiBuf = jack_port_get_buffer(midiIn_, nframes);
+    const uint32_t evCount = jack_midi_get_event_count(midiBuf);
+
+    for (uint32_t i = 0; i < evCount; ++i) {
+        jack_midi_event_t ev;
+        jack_midi_event_get(&ev, midiBuf, i);
+        processMidi(ev);
+    }
+
+    // 2. Audio (com proteção de limite)
+    float* outputs[2]; 
+    // Garante que não vamos além do que o array 'outputs' suporta
+    size_t numChannels = std::min<size_t>(audioOut_.size(), 2);
+
+    for (size_t i = 0; i < numChannels; ++i) {
+        outputs[i] = static_cast<float*>(jack_port_get_buffer(audioOut_[i], nframes));
+        // Limpa aqui e remova o memset de dentro do SfizzEngine::render
+        std::memset(outputs[i], 0, sizeof(float) * nframes);
+    }
+
+    // 3. Render
+    processAudio(outputs, nframes);
+
+    return 0;
+}
+
+float* JackClient::outBuffer(size_t channel, uint32_t nframes) {
+    return (float*) jack_port_get_buffer(audioOut_[channel], nframes);
+}
+
+void* JackClient::midiBuffer(uint32_t nframes) {
+    return jack_port_get_buffer(midiIn_, nframes);
+}
