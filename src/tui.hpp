@@ -18,6 +18,12 @@ public:
     void run();
 
     std::function<void(const std::string&)> onSfzSelected;
+    std::function<bool()> isEngineLoading;
+    std::function<std::string()> getMidiDeviceName;
+    std::function<float()> getCpuLoad; // 0.0 a 100.0
+    std::function<bool()> getJackStatus;
+
+    void postCustomEvent();
 
 private:
     enum class UiCommand {
@@ -25,10 +31,11 @@ private:
         RescanDirectory,
     };
 
+    ftxui::Component getHeader_();
+
     void handleCommand(UiCommand cmd);
     void scanDirectory();
 
-private:
     std::string sfzDirectory_;
 
     std::vector<std::string> sfzFiles_;
@@ -37,4 +44,5 @@ private:
     std::atomic<UiCommand> pendingCommand_{UiCommand::None};
 
     ftxui::ScreenInteractive* screen_ = nullptr;
+    int frame_ = 0;
 };

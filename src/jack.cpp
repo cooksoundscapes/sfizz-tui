@@ -13,6 +13,8 @@ bool JackClient::open() {
     client_ = jack_client_open(name_.c_str(), JackNullOption, nullptr);
     if (!client_)
         return false;
+    
+    isConnected.store(true);
 
     jack_set_process_callback(client_, &_process, this);
     jack_on_shutdown(client_, &_shutdown, this);
@@ -38,7 +40,17 @@ bool JackClient::open() {
 }
 
 bool JackClient::activate() {
-    return jack_activate(client_) == 0;
+    if (jack_activate(client_) != 0) return false;
+
+    // Tenta conectar automaticamente nas saídas do sistema
+    const char** ports = jack_get_ports(client_, NULL, NULL, JackPortIsPhysical | JackPortIsInput);
+    if (ports != nullptr) {
+        // Conecta L e R (se existirem)
+        if (ports[0]) jack_connect(client_, jack_port_name(audioOut_[0]), ports[0]);
+        if (ports[1]) jack_connect(client_, jack_port_name(audioOut_[1]), ports[1]);
+        jack_free(ports);
+    }
+    return true;
 }
 
 void JackClient::close() {
@@ -63,9 +75,12 @@ int JackClient::_process(jack_nframes_t nframes, void* arg) {
     return static_cast<JackClient*>(arg)->process(nframes);
 }
 
+// static
 void JackClient::_shutdown(void* arg) {
     std::cerr << "JACK shutdown\n";
-    static_cast<JackClient*>(arg)->client_ = nullptr;
+    auto* self = static_cast<JackClient*>(arg);
+    self->client_ = nullptr;
+    self->isConnected.store(false);
 }
 
 int JackClient::process(jack_nframes_t nframes) {

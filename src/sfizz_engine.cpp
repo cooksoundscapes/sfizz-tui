@@ -2,6 +2,7 @@
 
 #include <sfizz.hpp>
 #include <cstring>
+#include <thread>
 
 SfizzEngine::SfizzEngine()
 {
@@ -16,8 +17,25 @@ SfizzEngine::~SfizzEngine()
 
 bool SfizzEngine::loadSfz(const std::string& path)
 {
-    
     return synth_->loadSfzFile(path);
+}
+
+bool SfizzEngine::loadSfzAsync(const std::string& path) {
+    if (isLoading_) return false; // Já está carregando algo?
+
+    isLoading_ = true;
+    
+    // Dispara uma thread separada para não travar a UI
+    std::thread([this, path]() {
+        {
+            std::lock_guard<std::mutex> lock(engineMutex_);
+            synth_->allSoundOff();
+            synth_->loadSfzFile(path);
+        }
+        isLoading_ = false;
+    }).detach(); // Deixa a thread rodar solta
+    
+    return true;
 }
 
 void SfizzEngine::setSampleRate(double sampleRate)
@@ -28,34 +46,48 @@ void SfizzEngine::setSampleRate(double sampleRate)
 
 void SfizzEngine::noteOn(int delay, uint8_t note, uint8_t vel)
 {
-    // O sfizz aceita o delay como primeiro argumento em muitas sobrecargas
-    synth_->noteOn(delay, note, vel);
+    dispatchToSynth([&] { synth_->noteOn(delay, note, vel); });
 }
 
 void SfizzEngine::noteOff(int delay, uint8_t note, uint8_t vel)
 {
-    synth_->noteOff(delay, note, vel);
+    dispatchToSynth([&] { synth_->noteOff(delay, note, vel); });
 }
 
 void SfizzEngine::controlChange(int delay, uint8_t cc, uint8_t val)
 {
-    synth_->cc(delay, cc, val);
+    dispatchToSynth([&] { synth_->cc(delay, cc, val); });
 }
 
 void SfizzEngine::pitchBend(int delay, int value)
 {
-    synth_->pitchWheel(delay, value);
+    dispatchToSynth([&] { synth_->pitchWheel(delay, value); });
 }
 
 void SfizzEngine::render(float* outL, float* outR, uint32_t nframes)
 {
-    // sfizz soma nos buffers → limpar antes
-    // MAS jack ja deveria fazer
-    // std::memset(outL, 0, sizeof(float) * nframes);
-    // std::memset(outR, 0, sizeof(float) * nframes);
+    // Tenta travar (try_lock). Se o carregamento estiver usando o mutex,
+    // o render apenas retorna silêncio para não travar o JACK (xrun).
+    std::unique_lock<std::mutex> lock(engineMutex_, std::try_to_lock);
+    
+    std::memset(outL, 0, sizeof(float) * nframes);
+    std::memset(outR, 0, sizeof(float) * nframes);
 
-    float* outputs[2] = { outL, outR };
-    synth_->renderBlock(outputs, nframes);
+    if (lock.owns_lock()) {
+        auto start = std::chrono::high_resolution_clock::now();
+        float* outputs[2] = { outL, outR };
+        synth_->renderBlock(outputs, nframes);
+        auto end = std::chrono::high_resolution_clock::now();
+        updateLoad(start, end, nframes);
+    }
+}
+
+void SfizzEngine::updateLoad(time_point start, time_point end, uint32_t nframes) {
+    std::chrono::duration<double> diff = end - start;
+    float instantLoad = diff.count() / (nframes / sampleRate_) * 100.0f;
+
+    float current = audioLoad.load();
+    audioLoad.store(current + loadCoeff * (instantLoad - current));
 }
 
 uint32_t SfizzEngine::numActiveVoices() const

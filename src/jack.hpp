@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <atomic>
 
 class JackClient {
 public:
@@ -14,6 +15,8 @@ public:
     bool open();
     bool activate();
     void close();
+
+    bool getJackStatus() { return isConnected.load(); }
 
     uint32_t sampleRate() const;
     uint32_t bufferSize() const;
@@ -33,7 +36,8 @@ private:
 
     int process(jack_nframes_t nframes);
 
-private:
+    std::atomic<bool> isConnected;
+
     std::string name_;
     jack_client_t* client_ = nullptr;
 

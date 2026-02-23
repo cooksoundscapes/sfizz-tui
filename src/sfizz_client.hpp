@@ -8,8 +8,7 @@ public:
         // Inicialize o sfizz aqui ou receba por injeção
         engine_ = std::make_unique<SfizzEngine>();
     }
-
-    void loadSfz(const std::string& path) { engine_->loadSfz(path); }
+    SfizzEngine& getEngine() { return *engine_; }
 
 protected:
     void processAudio(float** outputs, uint32_t nframes) override {

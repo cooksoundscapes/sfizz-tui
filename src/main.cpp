@@ -37,7 +37,19 @@ int main(int argc, char** argv) {
 
     tui.onSfzSelected = [&](const std::string& filename) {
         std::string fullPath = sfzDir + "/" + filename;
-        sfizz_app.loadSfz(fullPath);
+        sfizz_app.getEngine().loadSfzAsync(fullPath);
+    };
+    tui.isEngineLoading = [&](){
+        return sfizz_app.getEngine().isLoading();
+    };
+    tui.getMidiDeviceName = [&](){
+        return "";
+    };
+    tui.getCpuLoad = [&](){
+        return sfizz_app.getEngine().getLoad();
+    };
+    tui.getJackStatus = [&](){
+        return sfizz_app.getJackStatus();
     };
 
     // roda a UI em thread separada
