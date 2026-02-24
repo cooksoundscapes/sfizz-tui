@@ -35,6 +35,7 @@ public:
     // outL/outR: buffers fornecidos pelo chamador
     void render(float* outL, float* outR, uint32_t nframes);
     float getLoad() { return audioLoad.load(); }
+    const std::string& getLoadedFile() { return loadedFile_; }
 
     // introspecção (já pensando no futuro)
     uint32_t numActiveVoices() const;
@@ -47,6 +48,9 @@ private:
 
     sfz::Sfizz* synth_ = nullptr;
     double sampleRate_ = 48000.0;
+
+    std::string loadedFile_;
+
     std::atomic<bool> isLoading_{false};
     std::mutex engineMutex_;
 

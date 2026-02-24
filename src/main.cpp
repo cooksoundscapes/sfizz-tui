@@ -14,7 +14,9 @@ static void signalHandler(int) {
     running = false;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
+    // Configure signals
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
 
@@ -43,13 +45,19 @@ int main(int argc, char** argv) {
         return sfizz_app.getEngine().isLoading();
     };
     tui.getMidiDeviceName = [&](){
-        return "";
+        return sfizz_app.getLastConnectedDevice();
     };
     tui.getCpuLoad = [&](){
         return sfizz_app.getEngine().getLoad();
     };
     tui.getJackStatus = [&](){
         return sfizz_app.getJackStatus();
+    };
+    tui.getMidiDevices = [&](){
+        return sfizz_app.getAvailableMidiSources();
+    };
+    tui.onMidiSourceSelected = [&](std::string source){
+        sfizz_app.setLastConnectedDevice(source);
     };
 
     // roda a UI em thread separada

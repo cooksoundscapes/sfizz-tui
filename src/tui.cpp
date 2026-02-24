@@ -19,7 +19,7 @@ void TuiClient::requestRescan() {
     }
 }
 
-Component TuiClient::getHeader_() {
+Component TuiClient::createHeader_() {
     return Renderer([&] {
     // Busca os dados via callbacks
     std::string midiName = getMidiDeviceName ? getMidiDeviceName() : "None";
@@ -38,7 +38,7 @@ Component TuiClient::getHeader_() {
     return hbox({
         jack_status,
         separator(),
-        text(" MIDI: " + midiName) | flex,
+        text(" MIDI [F2]: " + midiName) | flex,
         separator(),
         text(" Load: ") | color(cpuColor),
         gauge(cpu / 100.0f) | size(WIDTH, EQUAL, 10) | color(cpuColor),
@@ -46,51 +46,100 @@ Component TuiClient::getHeader_() {
 });
 }
 
-void TuiClient::run() {
-    ScreenInteractive screen = ScreenInteractive::TerminalOutput();
-    screen_ = &screen;
-
-    MenuOption option;
-    option.on_change = [&] {
-        auto index = static_cast<size_t>(selectedIndex_);
-        if (index < sfzFiles_.size()) {
-            onSfzSelected(sfzFiles_[index]);
-        }
-    };
-    auto dropdown = Menu(&sfzFiles_, &selectedIndex_, option);
-
-    auto header = getHeader_();
-
-    auto loading_modal = Renderer([&] {
+Component TuiClient::createLoadingModal_() {
+    return Renderer([&] {
         frame_++;
         return vbox({
             text("loading...") | hcenter,
             spinner(18, frame_) | hcenter | color(Color::Cyan),
-        }) | size(WIDTH, GREATER_THAN, 30) | borderDouble | bgcolor(Color::Black);
+        })
+        | size(WIDTH, GREATER_THAN, 30)
+        | borderDouble
+        | bgcolor(Color::Black);
     });
-    bool loading = isEngineLoading && isEngineLoading();
+}
 
-    auto content = Renderer(dropdown, [&] {
+Component TuiClient::createMidiSourcesModal_() {
+    MenuOption option;
+    option.on_enter = [&] {
+        auto index = static_cast<size_t>(selectedSourceIndex_);
+        if (index < midiSources_.size()) {
+            onMidiSourceSelected(midiSources_[index]);
+            showMidiSourcesModal_ = false;
+        }
+    };
+    auto sourcesMenu = Menu(&midiSources_, &selectedSourceIndex_, option);
+
+    return Renderer(sourcesMenu, [=] {
+        return vbox({
+            text("Select MIDI source or ESC to exit"),
+            separator(),
+            sourcesMenu->Render()
+                | vscroll_indicator
+                | frame
+                | size(HEIGHT, LESS_THAN, 5)
+                | size(WIDTH, GREATER_THAN, 30)
+        })
+        | bgcolor(Color::Black)
+        | borderDouble;
+    });
+}
+
+Component TuiClient::createSfzFileMenu_() {
+    MenuOption option;
+    option.on_enter = [&] {
+        auto index = static_cast<size_t>(selectedSfzIndex_);
+        if (index < sfzFiles_.size()) {
+            onSfzSelected(sfzFiles_[index]);
+            selectedSfzFile_ = sfzFiles_[index];
+        }
+    };
+    auto filesMenu = Menu(&sfzFiles_, &selectedSfzIndex_, option);
+   
+    return Renderer(filesMenu, [=] {
         return vbox({
             separator(),
-            text("Directory: " + sfzDirectory_),
+            text(sfzDirectory_ + " : " + selectedSfzFile_),
             separator(),
-            dropdown->Render(),
+            filesMenu->Render()
+                | vscroll_indicator
+                | frame
+                | size(HEIGHT, LESS_THAN, sfzFileMenuLineCount_)
         });
     });
+}
 
-    auto page = Container::Vertical({header, content}) | border;
-    
-    auto composition = Modal(page, loading_modal, &loading);
+void TuiClient::run() {
+    ScreenInteractive screen = ScreenInteractive::TerminalOutput();
+    screen_ = &screen;
+    screen_->TrackMouse(false);
 
-    // Root component with event handling
-    auto root = CatchEvent(composition, [&](Event event) {
+    auto header = createHeader_();
+    auto sfzMenu = createSfzFileMenu_();
+    auto midiSourcesModal = createMidiSourcesModal_();
+    auto loadingModal = createLoadingModal_();
+
+    auto page = Container::Vertical({header, sfzMenu}) | border;
+
+    auto overlay1 = Modal(page, midiSourcesModal, &showMidiSourcesModal_);
+    auto overlay2 = Modal(overlay1, loadingModal, &engineIsLoading_);
+
+    auto root = CatchEvent(overlay2, [&](Event event) {
         if (event == Event::Custom) {
             auto cmd = pendingCommand_.exchange(
                 UiCommand::None,
                 std::memory_order_acquire
             );
             handleCommand(cmd);
+            return true;
+        }
+        if (event == Event::F2) {
+            midiSources_ = getMidiDevices();
+            showMidiSourcesModal_ = true;
+            return true; // Consome o evento para ninguém mais usar F2
+        }
+        if (event == Event::Escape && showMidiSourcesModal_) {
+            showMidiSourcesModal_ = false;
             return true;
         }
         return false;
@@ -108,14 +157,14 @@ void TuiClient::run() {
         }
     });
 
+    // Main blocking loop
     screen.Loop(root);
 
-    // Finaliza a thread de refresh
+    // Finalize refresh thread
     refresh_ui_continue = false;
     if (refresh_thread.joinable()) {
         refresh_thread.join();
     }
-
     screen_ = nullptr;
 }
 
@@ -136,7 +185,7 @@ void TuiClient::handleCommand(UiCommand cmd) {
 
 void TuiClient::scanDirectory() {
     sfzFiles_.clear();
-    selectedIndex_ = 0;
+    selectedSfzIndex_ = 0;
 
     if (!fs::exists(sfzDirectory_))
         return;

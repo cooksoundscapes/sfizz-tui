@@ -22,6 +22,8 @@ public:
     std::function<std::string()> getMidiDeviceName;
     std::function<float()> getCpuLoad; // 0.0 a 100.0
     std::function<bool()> getJackStatus;
+    std::function<std::vector<std::string>()> getMidiDevices;
+    std::function<void(const std::string&)> onMidiSourceSelected;
 
     void postCustomEvent();
 
@@ -31,15 +33,29 @@ private:
         RescanDirectory,
     };
 
-    ftxui::Component getHeader_();
+    // Components
+    ftxui::Component createHeader_();
+    ftxui::Component createLoadingModal_();
+    ftxui::Component createMidiSourcesModal_();
+    ftxui::Component createSfzFileMenu_();
+
+    // flags
+    bool engineIsLoading_ = false;
+    bool showMidiSourcesModal_ = false;
 
     void handleCommand(UiCommand cmd);
     void scanDirectory();
 
     std::string sfzDirectory_;
+    const int sfzFileMenuLineCount_ = 10;
+
+    int selectedSfzIndex_ = 0;
+    int selectedSourceIndex_ = 0;
+
+    std::string selectedSfzFile_ = "None";
 
     std::vector<std::string> sfzFiles_;
-    int selectedIndex_ = 0;
+    std::vector<std::string> midiSources_;
 
     std::atomic<UiCommand> pendingCommand_{UiCommand::None};
 

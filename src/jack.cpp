@@ -118,3 +118,43 @@ float* JackClient::outBuffer(size_t channel, uint32_t nframes) {
 void* JackClient::midiBuffer(uint32_t nframes) {
     return jack_port_get_buffer(midiIn_, nframes);
 }
+
+std::vector<std::string> JackClient::getAvailableMidiSources() {
+    std::vector<std::string> sources;
+    const char** ports = jack_get_ports(client_, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput);
+    
+    if (ports) {
+        for (int i = 0; ports[i]; ++i) {
+            // Filtramos para não listar nossa própria porta se ela for output
+            sources.push_back(ports[i]);
+        }
+        jack_free(ports);
+    }
+    return sources;
+}
+
+void JackClient::setLastConnectedDevice(std::string newPortName) {
+    // 1. Desconecta o cabo antigo se ele existir
+    if (!lastConnectedDevice_.empty()) {
+        // jack_disconnect(cliente, porta_origem, porta_destino)
+        jack_disconnect(client_, 
+                        lastConnectedDevice_.c_str(), 
+                        jack_port_name(midiIn_));
+    }
+
+    // 2. Atualiza para o novo nome da porta
+    lastConnectedDevice_ = newPortName;
+
+    // 3. Conecta o novo cabo virtual
+    if (!lastConnectedDevice_.empty()) {
+        // Tenta conectar. O JACK retorna 0 se der certo.
+        int res = jack_connect(client_, 
+                               lastConnectedDevice_.c_str(), 
+                               jack_port_name(midiIn_));
+                               
+        if (res != 0 && res != EEXIST) {
+            // Se falhou (porta sumiu?), limpamos o estado
+            lastConnectedDevice_ = "";
+        }
+    }
+}

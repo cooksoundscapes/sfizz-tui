@@ -17,6 +17,9 @@ public:
     void close();
 
     bool getJackStatus() { return isConnected.load(); }
+    std::vector<std::string> getAvailableMidiSources();
+    const std::string& getLastConnectedDevice() { return lastConnectedDevice_; }
+    void setLastConnectedDevice(std::string dev);
 
     uint32_t sampleRate() const;
     uint32_t bufferSize() const;
@@ -37,6 +40,7 @@ private:
     int process(jack_nframes_t nframes);
 
     std::atomic<bool> isConnected;
+    std::string lastConnectedDevice_;
 
     std::string name_;
     jack_client_t* client_ = nullptr;

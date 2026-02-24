@@ -23,6 +23,10 @@ bool SfizzEngine::loadSfz(const std::string& path)
 bool SfizzEngine::loadSfzAsync(const std::string& path) {
     if (isLoading_) return false; // Já está carregando algo?
 
+    if (path == loadedFile_) {
+        return false;
+    }
+    loadedFile_ = path;
     isLoading_ = true;
     
     // Dispara uma thread separada para não travar a UI
