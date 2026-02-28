@@ -30,4 +30,5 @@ executable(
     sfizz_dep,
     ftxui_dep,
   ],
+  install: true
 )

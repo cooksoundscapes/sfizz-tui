@@ -1,6 +1,7 @@
 #include "jack.hpp"
 #include "tui.hpp"
 #include "sfizz_client.hpp"
+#include "logger.hpp"
 
 #include <csignal>
 #include <atomic>
@@ -16,7 +17,7 @@ static void signalHandler(int) {
 
 int main(int argc, char** argv)
 {
-    // Configure signals
+    // Configura signals
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
 
@@ -25,6 +26,10 @@ int main(int argc, char** argv)
     if (argc > 1) {
         sfzDir = argv[1];
     }
+
+    // Inicia logger e captura stderr em memoria
+    Logger logger;
+    logger.start();
 
     // JACK
     SfizzJackApp sfizz_app;
@@ -37,8 +42,7 @@ int main(int argc, char** argv)
     // TUI
     TuiClient tui(sfzDir);
 
-    tui.onSfzSelected = [&](const std::string& filename) {
-        std::string fullPath = sfzDir + "/" + filename;
+    tui.onSfzSelected = [&](const std::string& fullPath) {
         sfizz_app.getEngine().loadSfzAsync(fullPath);
     };
     tui.isEngineLoading = [&](){
@@ -50,7 +54,7 @@ int main(int argc, char** argv)
     tui.getCpuLoad = [&](){
         return sfizz_app.getEngine().getLoad();
     };
-    tui.getJackStatus = [&](){
+    tui.getEngineStatus = [&](){
         return sfizz_app.getJackStatus();
     };
     tui.getMidiDevices = [&](){
@@ -58,6 +62,9 @@ int main(int argc, char** argv)
     };
     tui.onMidiSourceSelected = [&](std::string source){
         sfizz_app.setLastConnectedDevice(source);
+    };
+    tui.getLogBuffer = [&](){
+        return logger.getBufferView();
     };
 
     // roda a UI em thread separada
@@ -73,6 +80,8 @@ int main(int argc, char** argv)
 
     // shutdown ordenado
     sfizz_app.close();
+
+    logger.stop();
 
     if (uiThread.joinable())
         uiThread.join();

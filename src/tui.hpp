@@ -6,6 +6,7 @@
 #include <atomic>
 #include <string>
 #include <vector>
+#include <string_view>
 
 class TuiClient {
 public:
@@ -21,11 +22,14 @@ public:
     std::function<bool()> isEngineLoading;
     std::function<std::string()> getMidiDeviceName;
     std::function<float()> getCpuLoad; // 0.0 a 100.0
-    std::function<bool()> getJackStatus;
+    std::function<bool()> getEngineStatus;
     std::function<std::vector<std::string>()> getMidiDevices;
     std::function<void(const std::string&)> onMidiSourceSelected;
+    std::function<std::string_view()> getLogBuffer;
 
     void postCustomEvent();
+
+    void clear() { if (screen_) screen_->Clear(); }
 
 private:
     enum class UiCommand {
@@ -38,10 +42,12 @@ private:
     ftxui::Component createLoadingModal_();
     ftxui::Component createMidiSourcesModal_();
     ftxui::Component createSfzFileMenu_();
+    ftxui::Component createLoggerView_();
 
     // flags
     bool engineIsLoading_ = false;
     bool showMidiSourcesModal_ = false;
+    bool showLogs_ = false;
 
     void handleCommand(UiCommand cmd);
     void scanDirectory();
@@ -54,7 +60,12 @@ private:
 
     std::string selectedSfzFile_ = "None";
 
-    std::vector<std::string> sfzFiles_;
+    struct SfzFile {
+        std::string displayName;
+        std::string filePath;
+    };
+    std::vector<SfzFile> sfzFiles_;
+    std::vector<std::string> fileNames_;
     std::vector<std::string> midiSources_;
 
     std::atomic<UiCommand> pendingCommand_{UiCommand::None};
