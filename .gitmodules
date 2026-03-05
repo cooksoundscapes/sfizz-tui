@@ -1,0 +1,3 @@
+[submodule "subprojects/core"]
+	path = subprojects/core
+	url = /home/me/Projects/mirrors/cpp_audio_core.git/

@@ -1,4 +1,5 @@
 {
-    "C_Cpp.default.compileCommands": "/home/me/Desktop/sfizz-tui/builddir/compile_commands.json",
-    "C_Cpp.default.configurationProvider": "mesonbuild.mesonbuild"
+    "C_Cpp.default.compileCommands": "/home/me/Desktop/sfizz-tui/build/compile_commands.json",
+    "C_Cpp.default.configurationProvider": "mesonbuild.mesonbuild",
+    "mesonbuild.configureOnOpen": false
 }

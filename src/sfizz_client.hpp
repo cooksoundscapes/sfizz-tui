@@ -1,4 +1,4 @@
-#include "jack.hpp"
+#include "core/jack.hpp"
 #include "sfizz_engine.hpp"
 #include <memory>
 
@@ -16,7 +16,7 @@ protected:
         engine_->render(outputs[0], outputs[1], nframes);
     }
 
-    void processMidi(const jack_midi_event_t& ev) {
+    void processMidi(const jack_midi_event_t& ev) override {
     if (ev.size == 0) return;
 
     uint8_t status = ev.buffer[0];

@@ -1,7 +1,6 @@
-#include "jack.hpp"
 #include "tui.hpp"
 #include "sfizz_client.hpp"
-#include "logger.hpp"
+#include "core/logger.hpp"
 
 #include <csignal>
 #include <atomic>

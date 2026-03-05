@@ -21,7 +21,7 @@ bool SfizzEngine::loadSfz(const std::string& path)
 }
 
 bool SfizzEngine::loadSfzAsync(const std::string& path) {
-    if (isLoading_) return false; // Já está carregando algo?
+    if (isLoading_) return false;
 
     if (path == loadedFile_) {
         return false;
@@ -98,3 +98,4 @@ uint32_t SfizzEngine::numActiveVoices() const
 {
     return synth_->getNumActiveVoices();
 }
+

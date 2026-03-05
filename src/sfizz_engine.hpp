@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <string>
-#include <vector>
 #include <atomic>
 #include <mutex>
 #include <chrono>
@@ -41,6 +40,8 @@ public:
     uint32_t numActiveVoices() const;
 
     bool isLoading() const { return isLoading_.load(); }
+
+    const std::string& getSubInstrument();
 
 private:
     SfizzEngine(const SfizzEngine&) = delete;

@@ -10,13 +10,14 @@ project(
 )
 
 # dependências
-jack_dep = dependency('jack')
 sfizz_dep = dependency('sfizz')
 ftxui_dep = dependency('ftxui')
 
+core_proj = subproject('core')
+core_dep = core_proj.get_variable('core_dep')
+
 srcs = files(
   'src/main.cpp',
-  'src/jack.cpp',
   'src/tui.cpp',
   'src/sfizz_engine.cpp',
 )
@@ -26,7 +27,7 @@ executable(
   srcs,
   include_directories : include_directories('src'),
   dependencies : [
-    jack_dep,
+    core_dep,
     sfizz_dep,
     ftxui_dep,
   ],
