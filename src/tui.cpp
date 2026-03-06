@@ -107,9 +107,10 @@ Component TuiClient::createSfzFileMenu_() {
     MenuOption option;
     option.on_enter = [&] {
         auto index = static_cast<size_t>(selectedSfzIndex_);
-        if (index < sfzFiles_.size()) {
-            onSfzSelected(sfzFiles_[index].filePath);
-            selectedSfzFile_ = sfzFiles_[index].displayName;
+        if (index < filteredIndices_.size()) {
+            int realIndex = filteredIndices_[index];
+            onSfzSelected(sfzFiles_[realIndex].filePath);
+            selectedSfzFile_ = sfzFiles_[realIndex].displayName;
         }
     };
     auto filesMenu = Menu(&fileNames_, &selectedSfzIndex_, option);
@@ -130,6 +131,7 @@ Component TuiClient::createSfzFileMenu_() {
    
     return Renderer(splitLayout, [=, this] {
         auto keySwitch = getActiveKeyswitch ? getActiveKeyswitch() : "";
+        auto dim = Terminal::Size();
         return vbox({
             separator(),
             text(sfzDirectory_ + " : " + selectedSfzFile_ + " (" + keySwitch + ")"),
@@ -139,7 +141,7 @@ Component TuiClient::createSfzFileMenu_() {
                     | vscroll_indicator
                     | frame
                     | size(HEIGHT, LESS_THAN, sfzFileMenuLineCount_)
-                    | size(WIDTH, EQUAL, 40),
+                    | size(WIDTH, EQUAL, static_cast<int>(dim.dimx * 0.7f)),
                 separator(),
                 tagsContainer->Render()
                     | vscroll_indicator
