@@ -1,6 +1,7 @@
 #include "tui.hpp"
 #include "sfizz_client.hpp"
 #include "core/logger.hpp"
+#include <core/utils.hpp>
 
 #include <csignal>
 #include <atomic>
@@ -21,9 +22,12 @@ int main(int argc, char** argv)
     std::signal(SIGTERM, signalHandler);
 
     // diretório dos SFZs
-    std::string sfzDir = "./sfz";
+    auto homeDir = std::getenv("HOME");
+    std::string sfzDir;
     if (argc > 1) {
         sfzDir = argv[1];
+    } else {
+        sfzDir = homeDir + std::string("/soundfonts");
     }
 
     // Inicia logger e captura stderr em memoria
@@ -64,6 +68,9 @@ int main(int argc, char** argv)
     };
     tui.getLogBuffer = [&](){
         return logger.getBufferView();
+    };
+    tui.getActiveKeyswitch = [&](){
+        return sfizz_app.getEngine().getCurrentSwitch();
     };
 
     // roda a UI em thread separada

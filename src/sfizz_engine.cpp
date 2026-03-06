@@ -1,4 +1,5 @@
 #include "sfizz_engine.hpp"
+#include "sfz_parser.hpp"
 
 #include <sfizz.hpp>
 #include <cstring>
@@ -35,9 +36,20 @@ bool SfizzEngine::loadSfzAsync(const std::string& path) {
             std::lock_guard<std::mutex> lock(engineMutex_);
             synth_->allSoundOff();
             synth_->loadSfzFile(path);
+
+            metadata = SfzParser::load(path);
+            int defaultId = metadata.default_switch;
+
+            if (defaultId >= 0 && defaultId < 128 && metadata.keyswitch_map[defaultId].active) {
+                // Se o default existe e tem label, usa ele
+                activeSwitch_ = metadata.keyswitch_map[defaultId].label;
+            } else {
+                // Caso contrário, limpa ou define um padrão
+                activeSwitch_ = "Standard"; 
+            }
         }
         isLoading_ = false;
-    }).detach(); // Deixa a thread rodar solta
+    }).detach();
     
     return true;
 }
@@ -50,7 +62,11 @@ void SfizzEngine::setSampleRate(double sampleRate)
 
 void SfizzEngine::noteOn(int delay, uint8_t note, uint8_t vel)
 {
-    dispatchToSynth([&] { synth_->noteOn(delay, note, vel); });
+    dispatchToSynth([&] {
+        synth_->noteOn(delay, note, vel);
+        if (metadata.keyswitch_map[note].active)
+            activeSwitch_ = metadata.keyswitch_map[note].label;
+    });
 }
 
 void SfizzEngine::noteOff(int delay, uint8_t note, uint8_t vel)

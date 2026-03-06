@@ -1,12 +1,11 @@
 #include "tui.hpp"
+#include "sfz_cache.hpp"
+#include "sfz_parser.hpp"
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/dom/elements.hpp>
-
 #include <filesystem>
-
-#include <iostream>
 
 using namespace ftxui;
 namespace fs = std::filesystem;
@@ -114,16 +113,39 @@ Component TuiClient::createSfzFileMenu_() {
         }
     };
     auto filesMenu = Menu(&fileNames_, &selectedSfzIndex_, option);
+
+    auto tagsContainer = Container::Vertical({});
+    for (auto& tag : availableTags_) {
+        auto opt = CheckboxOption::Simple();
+        opt.on_change = [this] { 
+            updateFilteredList_(); 
+        };
+        tagsContainer->Add(Checkbox(&tag.name, &tag.enabled, opt));
+    }
+
+    auto splitLayout = Container::Horizontal({
+        filesMenu,
+        tagsContainer
+    });
    
-    return Renderer(filesMenu, [=] {
+    return Renderer(splitLayout, [=, this] {
+        auto keySwitch = getActiveKeyswitch ? getActiveKeyswitch() : "";
         return vbox({
             separator(),
-            text(sfzDirectory_ + " : " + selectedSfzFile_),
+            text(sfzDirectory_ + " : " + selectedSfzFile_ + " (" + keySwitch + ")"),
             separator(),
-            filesMenu->Render()
-                | vscroll_indicator
-                | frame
-                | size(HEIGHT, LESS_THAN, sfzFileMenuLineCount_)
+            hbox({
+                filesMenu->Render()
+                    | vscroll_indicator
+                    | frame
+                    | size(HEIGHT, LESS_THAN, sfzFileMenuLineCount_)
+                    | size(WIDTH, EQUAL, 40),
+                separator(),
+                tagsContainer->Render()
+                    | vscroll_indicator
+                    | frame
+                    | size(HEIGHT, LESS_THAN, availableTags_.size())
+            })
         });
     });
 }
@@ -223,9 +245,13 @@ void TuiClient::scanDirectory() {
             continue;
 
         if (entry.path().extension() == ".sfz") {
+            SfzMetaData metadata = SfzParser::load(entry.path().string());
+            std::string displayName = entry.path().filename().string();
+
             sfzFiles_.push_back({
-                .displayName = entry.path().filename().string(),
-                .filePath = entry.path().string()
+                .displayName = displayName,
+                .filePath = entry.path().string(),
+                .tagMask = metadata.tag_mask
             });
         }
     }
@@ -233,7 +259,8 @@ void TuiClient::scanDirectory() {
     if (sfzFiles_.empty()) {
         sfzFiles_.push_back({
             .displayName = "<no .sfz files>",
-            .filePath = ""
+            .filePath = "",
+            .tagMask = 0
         });
         return;
     }
@@ -243,5 +270,30 @@ void TuiClient::scanDirectory() {
     fileNames_.reserve(sfzFiles_.size());
     for (const auto& file : sfzFiles_) {
         fileNames_.push_back(file.displayName);
+    }
+}
+
+void TuiClient::updateFilteredList_() {
+    fileNames_.clear();
+    filteredIndices_.clear();
+
+    fileNames_.reserve(sfzFiles_.size());
+    filteredIndices_.reserve(sfzFiles_.size());
+
+    uint64_t activeMask = 0;
+    for (const auto& t : availableTags_) {
+        if (t.enabled) activeMask |= t.bit;
+    }
+
+    for (int i = 0; i < (int)sfzFiles_.size(); ++i) {
+        // Se nenhuma tag estiver marcada, mostra tudo.
+        // Se houver tags, mostra apenas se o arquivo tiver PELO MENOS UMA das tags marcadas (OR lógico).
+        if (activeMask == 0 || (sfzFiles_[i].tagMask & activeMask)) {
+            std::string label = sfzFiles_[i].displayName;
+            if (sfzFiles_[i].tagMask & Tag::FAVORITE) label = "★ " + label;
+            
+            fileNames_.push_back(label);
+            filteredIndices_.push_back(i);
+        }
     }
 }

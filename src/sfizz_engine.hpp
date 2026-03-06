@@ -6,6 +6,9 @@
 #include <mutex>
 #include <chrono>
 
+
+#include "sfz_cache.hpp"
+
 // forward-declare sfizz
 namespace sfz {
 class Sfizz;
@@ -34,14 +37,13 @@ public:
     // outL/outR: buffers fornecidos pelo chamador
     void render(float* outL, float* outR, uint32_t nframes);
     float getLoad() { return audioLoad.load(); }
-    const std::string& getLoadedFile() { return loadedFile_; }
+    std::string getLoadedFile() { return loadedFile_; }
 
     // introspecção (já pensando no futuro)
     uint32_t numActiveVoices() const;
 
     bool isLoading() const { return isLoading_.load(); }
-
-    const std::string& getSubInstrument();
+    const std::string& getCurrentSwitch() { return activeSwitch_; }
 
 private:
     SfizzEngine(const SfizzEngine&) = delete;
@@ -57,6 +59,7 @@ private:
 
     std::atomic<float> audioLoad = 0.0f;
     const float loadCoeff = 0.1f;
+
     void updateLoad(time_point, time_point, uint32_t);
 
     template<typename F>
@@ -66,4 +69,7 @@ private:
             func();
         }
     }
+
+    SfzMetaData metadata;
+    std::string activeSwitch_;
 };
