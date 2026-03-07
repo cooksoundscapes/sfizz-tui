@@ -29,8 +29,7 @@ bool SfizzEngine::loadSfzAsync(const std::string& path) {
     }
     loadedFile_ = path;
     isLoading_ = true;
-    
-    // Dispara uma thread separada para não travar a UI
+
     std::thread([this, path]() {
         {
             std::lock_guard<std::mutex> lock(engineMutex_);
@@ -41,10 +40,8 @@ bool SfizzEngine::loadSfzAsync(const std::string& path) {
             int defaultId = metadata.default_switch;
 
             if (defaultId >= 0 && defaultId < 128 && metadata.keyswitch_map[defaultId].active) {
-                // Se o default existe e tem label, usa ele
                 activeSwitch_ = metadata.keyswitch_map[defaultId].label;
             } else {
-                // Caso contrário, limpa ou define um padrão
                 activeSwitch_ = "Standard"; 
             }
         }
@@ -86,8 +83,6 @@ void SfizzEngine::pitchBend(int delay, int value)
 
 void SfizzEngine::render(float* outL, float* outR, uint32_t nframes)
 {
-    // Tenta travar (try_lock). Se o carregamento estiver usando o mutex,
-    // o render apenas retorna silêncio para não travar o JACK (xrun).
     std::unique_lock<std::mutex> lock(engineMutex_, std::try_to_lock);
     
     std::memset(outL, 0, sizeof(float) * nframes);
@@ -110,7 +105,7 @@ void SfizzEngine::updateLoad(time_point start, time_point end, uint32_t nframes)
     audioLoad.store(current + loadCoeff * (instantLoad - current));
 }
 
-uint32_t SfizzEngine::numActiveVoices() const
+uint32_t SfizzEngine::getNumActiveVoices() const
 {
     return synth_->getNumActiveVoices();
 }

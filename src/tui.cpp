@@ -1,37 +1,32 @@
 #include "tui.hpp"
 #include "sfz_cache.hpp"
 #include "sfz_parser.hpp"
+#include "ui_commands.hpp"
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <filesystem>
+#include <memory>
 
 using namespace ftxui;
 namespace fs = std::filesystem;
 
 TuiClient::TuiClient(std::string sfzDirectory)
-    : sfzDirectory_(std::move(sfzDirectory)) {}
-
-void TuiClient::requestRescan() {
-    pendingCommand_.store(UiCommand::RescanDirectory, std::memory_order_release);
-    if (screen_) {
-        screen_->PostEvent(Event::Custom);
+    : sfzDirectory_(std::move(sfzDirectory)) {
+        midiParser = std::make_unique<MidiParser>();
     }
-}
+
 
 Component TuiClient::createHeader_() {
     return Renderer([&] {
-    // Busca os dados via callbacks
     std::string midiName = getMidiDeviceName ? getMidiDeviceName() : "None";
     float cpu = getCpuLoad ? getCpuLoad() : 0.0f;
     bool engineOk = getEngineStatus ? getEngineStatus() : false;
 
-    // Formatação do JACK
     auto engine_status = engineOk ? text(" Engine: OK ") | bgcolor(Color::Green) | color(Color::Black)
                               : text(" Engine: ERR ") | bgcolor(Color::Red) | color(Color::White);
 
-    // Formatação da CPU (Muda de cor se estiver fritando)
     Color cpuColor = Color::Green;
     if (cpu > 50.0f) cpuColor = Color::Yellow;
     if (cpu > 80.0f) cpuColor = Color::Red;
@@ -55,12 +50,12 @@ Component TuiClient::createLoggerView_() {
             window(text(" [F3] Engine Logs ") | hcenter | bold,
                 paragraph(std::string(logs)) 
                 | vscroll_indicator 
-                | yframe // Permite scroll se o texto exceder a altura
-                | size(HEIGHT, LESS_THAN, 20) // Limita a altura do overlay
+                | yframe
+                | size(HEIGHT, LESS_THAN, 20)
             )
         }) 
-        | bgcolor(Color::Black) // Fundo opaco para não misturar com a UI atrás
-        | center;               // Centraliza o overlay na tela
+        | bgcolor(Color::Black)
+        | center;
     });
 }
 
@@ -170,19 +165,11 @@ void TuiClient::run() {
     auto overlay_final = Modal(overlay2, loadingModal, &engineIsLoading_);
 
     auto root = CatchEvent(overlay_final, [&](Event event) {
-        if (event == Event::Custom) {
-            auto cmd = pendingCommand_.exchange(
-                UiCommand::None,
-                std::memory_order_acquire
-            );
-            handleCommand(cmd);
-            return true;
-        }
         if (event == Event::F2) {
             midiSources_ = getMidiDevices();
             showMidiSourcesModal_ = true;
             showLogs_ = false;
-            return true; // Consome o evento para ninguém mais usar F2
+            return true;
         }
         if (event == Event::F3) {
             showLogs_ = !showLogs_;
@@ -197,10 +184,8 @@ void TuiClient::run() {
         return false;
     });
 
-    // Initial scan (UI thread)
     scanDirectory();
 
-    // thread for keeping the screen live
     std::atomic<bool> refresh_ui_continue{true};
     std::thread refresh_thread([&] {
         while (refresh_ui_continue) {
@@ -222,17 +207,6 @@ void TuiClient::run() {
 
 void TuiClient::postCustomEvent() {
     if (screen_) screen_->PostEvent(Event::Custom);
-}
-
-void TuiClient::handleCommand(UiCommand cmd) {
-    switch (cmd) {
-        case UiCommand::RescanDirectory:
-            scanDirectory();
-            break;
-        case UiCommand::None:
-        default:
-            break;
-    }
 }
 
 void TuiClient::scanDirectory() {
@@ -288,14 +262,52 @@ void TuiClient::updateFilteredList_() {
     }
 
     for (int i = 0; i < (int)sfzFiles_.size(); ++i) {
-        // Se nenhuma tag estiver marcada, mostra tudo.
-        // Se houver tags, mostra apenas se o arquivo tiver PELO MENOS UMA das tags marcadas (OR lógico).
         if (activeMask == 0 || (sfzFiles_[i].tagMask & activeMask)) {
             std::string label = sfzFiles_[i].displayName;
             if (sfzFiles_[i].tagMask & Tag::FAVORITE) label = "★ " + label;
             
             fileNames_.push_back(label);
             filteredIndices_.push_back(i);
+        }
+    }
+}
+
+void TuiClient::loadMidiMap(std::string filepath) {
+    if (!midiParser->loadMap(filepath)) {
+        std::cerr << "Error loading MIDI map file " << filepath << std::endl;
+    }
+}
+
+void TuiClient::handleMidiEvent(MidiEvent e) {
+    if (!midiParser->isLoaded()) return;
+
+    UiCommand cmd = midiParser->parseEvent(e.type, e.channel, e.data1);
+
+    bool isDown =
+        (e.type == MidiInputType::NOTE_ON && e.data2 > 0) || 
+        (e.type == MidiInputType::CONTROL_CHANGE);
+
+    if (cmd != UiCommand::NONE && isDown) {
+        switch(cmd) {
+            case UiCommand::NAV_DOWN:       screen_->PostEvent(Event::ArrowDown); break;
+            case UiCommand::NAV_UP:         screen_->PostEvent(Event::ArrowUp); break;
+            case UiCommand::NAV_LEFT:       screen_->PostEvent(Event::ArrowLeft); break;
+            case UiCommand::NAV_RIGHT:      screen_->PostEvent(Event::ArrowRight); break;
+            case UiCommand::PAGE_UP:        screen_->PostEvent(Event::PageUp); break;
+            case UiCommand::PAGE_DOWN:      screen_->PostEvent(Event::PageDown); break;
+            case UiCommand::CONFIRM_SELECT: screen_->PostEvent(Event::Return); break;
+            case UiCommand::BACK_CANCEL:    screen_->PostEvent(Event::Escape); break;
+            case UiCommand::FOCUS_FILES:    screen_->PostEvent(Event::Special("focus_files")); break;
+            case UiCommand::FOCUS_TAGS:     screen_->PostEvent(Event::Special("focus_tags")); break;
+            case UiCommand::OPEN_MIDI_MENU: screen_->PostEvent(Event::Special("menu_midi")); break;
+            case UiCommand::OPEN_LOGS:      screen_->PostEvent(Event::Special("view_logs")); break;
+            case UiCommand::TAG_TOGGLE_0:   screen_->PostEvent(Event::Special("tag_0")); break;
+            case UiCommand::TAG_TOGGLE_1:   screen_->PostEvent(Event::Special("tag_1")); break;
+            case UiCommand::TAG_TOGGLE_2:   screen_->PostEvent(Event::Special("tag_2")); break;
+            case UiCommand::TAG_TOGGLE_3:   screen_->PostEvent(Event::Special("tag_3")); break;
+            case UiCommand::TAG_CLEAR_ALL:  screen_->PostEvent(Event::Special("tag_clear")); break;
+            case UiCommand::ENGINE_RELOAD:  screen_->PostEvent(Event::Special("reload")); break;
+            default: break;
         }
     }
 }

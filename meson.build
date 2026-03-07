@@ -20,6 +20,8 @@ srcs = files(
   'src/main.cpp',
   'src/tui.cpp',
   'src/sfizz_engine.cpp',
+  'src/sfizz_client.cpp',
+  'src/midi_parser.cpp'
 )
 
 executable(

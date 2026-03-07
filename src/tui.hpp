@@ -3,21 +3,18 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 
-#include <atomic>
 #include <string>
 #include <vector>
 #include <string_view>
+#include <memory>
 
+#include "midi_parser.hpp"
 #include "sfz_cache.hpp"
 
 class TuiClient {
 public:
     explicit TuiClient(std::string sfzDirectory);
 
-    // thread-safe
-    void requestRescan();
-
-    // bloqueia até sair da UI
     void run();
 
     std::function<void(const std::string&)> onSfzSelected;
@@ -34,13 +31,12 @@ public:
 
     void clear() { if (screen_) screen_->Clear(); }
 
-private:
-    enum class UiCommand {
-        None,
-        RescanDirectory,
-    };
+    void loadMidiMap(std::string filepath);
+    void handleMidiEvent(MidiEvent);
 
-    void handleCommand(UiCommand cmd);
+private:
+    std::unique_ptr<MidiParser> midiParser;
+
     void scanDirectory();
     void updateFilteredList_();
 
@@ -90,8 +86,6 @@ private:
     std::vector<std::string> fileNames_;
     std::vector<std::string> midiSources_;
     std::vector<int> filteredIndices_;
-
-    std::atomic<UiCommand> pendingCommand_{UiCommand::None};
 
     ftxui::ScreenInteractive* screen_ = nullptr;
     int frame_ = 0;

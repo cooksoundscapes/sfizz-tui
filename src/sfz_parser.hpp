@@ -15,7 +15,6 @@ namespace fs = std::filesystem;
 
 class SfzParser {
 public:
-    // Ponto de entrada principal
     static SfzMetaData load(const std::string& sfz_path) {
         auto cache_dir = get_cache_dir();
         std::string cache_path = generate_cache_path(sfz_path, cache_dir);
@@ -26,7 +25,7 @@ public:
             return cache;
         }
 
-        // Se falhou, faz o parse pesado
+        // Parse if cache is not found
         cache = parse_file(sfz_path);
         cache.original_mtime = current_mtime;
         save_cache(cache_path, cache);
@@ -36,12 +35,10 @@ public:
 
 private:
     static std::string get_cache_dir() {
-        // A variável static garante que o bloco interno só rode UMA VEZ
         static const std::string cached_path = []() {
             const char* home = getenv("HOME");
             std::string dir = home ? std::string(home) + "/.cache/sfizz-tui" : "./.sfz_cache";
-            
-            // Cria a pasta apenas na primeira chamada da vida do programa
+
             if (!fs::exists(dir)) {
                 try {
                     fs::create_directories(dir);
@@ -61,7 +58,7 @@ private:
         return 0;
     }
 
-    // Gera o nome do arquivo usando um hash simples do path
+    // Generate file name using a hash of full path
     static std::string generate_cache_path(const std::string& path, const std::string& dir) {
         std::hash<std::string> hasher;
         return dir + "/" + std::to_string(hasher(path)) + ".blob";
@@ -79,7 +76,6 @@ private:
         f.write(reinterpret_cast<const char*>(&data), sizeof(SfzMetaData));
     }
 
-    // Conversor de Nota (C4 -> 60)
     static int note_to_midi(std::string val) {
         if (val.empty()) return -1;
         if (isdigit(val[0])) return std::stoi(val);
@@ -106,7 +102,6 @@ private:
     }
 
     static uint64_t string_to_tag(std::string_view tag) {
-        // Função auxiliar local para comparação case-insensitive
         auto iequals = [](std::string_view a, std::string_view b) {
             return std::equal(a.begin(), a.end(), b.begin(), b.end(),
                             [](char a, char b) { return std::tolower(a) == std::tolower(b); });
@@ -126,7 +121,6 @@ private:
         return Tag::NONE;
     }
 
-    // O Parser de fato
     static SfzMetaData parse_file(const std::string& path) {
         SfzMetaData cache{};
         std::ifstream file(path);
@@ -136,11 +130,10 @@ private:
         std::string last_label = "";
 
         while (std::getline(file, line)) {
-            // Procure por "// tags:" no início da linha
             if (line.compare(0, 8, "// tags:") == 0) {
                 std::string content = line.substr(8);
                 
-                // Substitui pontuação comum por espaço para facilitar o split
+                // padronize divider to white space
                 for (char& c : content) {
                     if (c == ',' || c == ';' || c == '.') c = ' ';
                 }
@@ -148,7 +141,6 @@ private:
                 std::stringstream ss(content);
                 std::string word;
                 while (ss >> word) {
-                    // Remove espaços em branco extras nas pontas
                     word.erase(word.find_last_not_of(" \t\r\n") + 1);
                     
                     uint64_t bit = string_to_tag(word);
@@ -159,10 +151,8 @@ private:
                 continue;
             }
 
-            // Limpeza bruta: ignora comentários e linhas vazias
             if (line.empty() || line.find("//") == 0) continue;
 
-            // Detecta Headers (reset de contexto local)
             if (line.find("<group>") != std::string::npos || line.find("<region>") != std::string::npos) {
                 if (last_id != -1 && !last_label.empty()) {
                     cache.keyswitch_map[last_id].active = true;
@@ -170,7 +160,6 @@ private:
                 }
             }
 
-            // Opcodes de interesse
             size_t pos;
             if ((pos = line.find("sw_last=")) != std::string::npos) {
                 std::string val = extract_value(line, pos + 8);
@@ -188,11 +177,9 @@ private:
     }
 
     static std::string extract_value(const std::string& line, size_t start) {
-    // 1. Achar onde o valor realmente começa (pular espaços após o '=')
     size_t actual_start = line.find_first_not_of(" \t", start);
     if (actual_start == std::string::npos) return "";
 
-    // 2. Se o valor estiver entre aspas, pegamos tudo entre elas
     if (line[actual_start] == '\"') {
         size_t closing_quote = line.find('\"', actual_start + 1);
         if (closing_quote != std::string::npos) {
@@ -200,9 +187,6 @@ private:
         }
     }
 
-    // 3. Se NÃO tem aspas, o buraco é mais embaixo. 
-    // No SFZ, labels podem ter espaços. O jeito mais seguro para a sua TUI 
-    // é ler até o final da linha e limpar os espaços em branco do fim (trim).
     size_t end = line.find_last_not_of(" \t\r\n");
     if (end != std::string::npos && end >= actual_start) {
         return line.substr(actual_start, end - actual_start + 1);

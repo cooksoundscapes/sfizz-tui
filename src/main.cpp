@@ -1,7 +1,9 @@
+#include "CLI/CLI.hpp"
 #include "tui.hpp"
 #include "sfizz_client.hpp"
 #include "core/logger.hpp"
 #include <core/utils.hpp>
+#include <CLI/CLI.hpp>
 
 #include <csignal>
 #include <atomic>
@@ -17,75 +19,76 @@ static void signalHandler(int) {
 
 int main(int argc, char** argv)
 {
-    // Configura signals
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
 
-    // diretório dos SFZs
-    auto homeDir = std::getenv("HOME");
-    std::string sfzDir;
-    if (argc > 1) {
-        sfzDir = argv[1];
-    } else {
-        sfzDir = homeDir + std::string("/soundfonts");
-    }
+    CLI::App app{"SfizzTUI - Terminal Sample Player"};
 
-    // Inicia logger e captura stderr em memoria
+    auto homeDir = std::getenv("HOME");
+    std::string sfzPath = homeDir ? std::string(homeDir) + "/soundfonts" : "./";
+    std::string mapPath;
+
+    app.add_option("--sfzpath", sfzPath, "SFZ files root folder")->check(CLI::ExistingFile);
+    app.add_option("--midimap", mapPath, "MIDI Map file")->check(CLI::ExistingFile);
+
+    CLI11_PARSE(app, argc, argv);
+
     Logger logger;
     logger.start();
 
-    // JACK
-    SfizzJackApp sfizz_app;
-    if (!sfizz_app.open())
+    SfizzJackApp sfizzApp;
+    if (!sfizzApp.open())
         return 1;
 
-    if (!sfizz_app.activate())
-        return 1;
+    TuiClient tui(sfzPath);
+    if (!mapPath.empty()) {
+        tui.loadMidiMap(mapPath);
+    }
 
-    // TUI
-    TuiClient tui(sfzDir);
-
+    sfizzApp.midiExternalCallback = [&](MidiEvent e) {
+        tui.handleMidiEvent(e);
+    };
     tui.onSfzSelected = [&](const std::string& fullPath) {
-        sfizz_app.getEngine().loadSfzAsync(fullPath);
+        sfizzApp.getEngine().loadSfzAsync(fullPath);
     };
     tui.isEngineLoading = [&](){
-        return sfizz_app.getEngine().isLoading();
+        return sfizzApp.getEngine().isLoading();
     };
     tui.getMidiDeviceName = [&](){
-        return sfizz_app.getLastConnectedDevice();
+        return sfizzApp.getLastConnectedDevice();
     };
     tui.getCpuLoad = [&](){
-        return sfizz_app.getEngine().getLoad();
+        return sfizzApp.getEngine().getLoad();
     };
     tui.getEngineStatus = [&](){
-        return sfizz_app.getJackStatus();
+        return sfizzApp.getJackStatus();
     };
     tui.getMidiDevices = [&](){
-        return sfizz_app.getAvailableMidiSources();
+        return sfizzApp.getAvailableMidiSources();
     };
     tui.onMidiSourceSelected = [&](std::string source){
-        sfizz_app.setLastConnectedDevice(source);
+        sfizzApp.setLastConnectedDevice(source);
     };
     tui.getLogBuffer = [&](){
         return logger.getBufferView();
     };
     tui.getActiveKeyswitch = [&](){
-        return sfizz_app.getEngine().getCurrentSwitch();
+        return sfizzApp.getEngine().getCurrentSwitch();
     };
 
-    // roda a UI em thread separada
+    if (!sfizzApp.activate())
+        return 1;
+
     std::thread uiThread([&] {
         tui.run();
-        running = false; // se a UI sair, encerra o app
+        running = false;
     });
 
-    // loop principal (só mantém o processo vivo)
     while (running) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
-    // shutdown ordenado
-    sfizz_app.close();
+    sfizzApp.close();
 
     logger.stop();
 
