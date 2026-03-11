@@ -20,7 +20,8 @@ TuiClient::TuiClient(std::string sfzDirectory)
 
 Component TuiClient::createHeader_() {
     return Renderer([&] {
-    std::string midiName = getMidiDeviceName ? getMidiDeviceName() : "None";
+    std::string midiName = getMidiDeviceName ? getMidiDeviceName() : "";
+    std::string midiLabel = midiName.empty() ? "F2 Select MIDI" : midiName;
     float cpu = getCpuLoad ? getCpuLoad() : 0.0f;
     bool engineOk = getEngineStatus ? getEngineStatus() : false;
 
@@ -34,7 +35,7 @@ Component TuiClient::createHeader_() {
     return hbox({
         engine_status,
         separator(),
-        text(" MIDI [F2]: " + midiName) | flex,
+        text(midiLabel) | flex,
         separator(),
         text(" Load: ") | color(cpuColor),
         gauge(cpu / 100.0f) | size(WIDTH, EQUAL, 10) | color(cpuColor),
@@ -295,12 +296,27 @@ void TuiClient::handleMidiEvent(MidiEvent e) {
             case UiCommand::NAV_RIGHT:      screen_->PostEvent(Event::ArrowRight); break;
             case UiCommand::PAGE_UP:        screen_->PostEvent(Event::PageUp); break;
             case UiCommand::PAGE_DOWN:      screen_->PostEvent(Event::PageDown); break;
+            case UiCommand::BROWSE_MENU: {
+                int delta = (int)e.data2 - 64;
+                if (delta > 0) {
+                    for (int i = 0; i < std::abs(delta); ++i) {
+                        screen_->PostEvent(Event::ArrowDown);
+                    }
+                } 
+                else if (delta < 0) {
+                    for (int i = 0; i < std::abs(delta); ++i) {
+                        screen_->PostEvent(Event::ArrowUp);
+                    }
+                }
+                screen_->PostEvent(Event::Return);
+                break;
+            }
+            case UiCommand::OPEN_MIDI_MENU: screen_->PostEvent(Event::F2); break;
+            case UiCommand::OPEN_LOGS:      screen_->PostEvent(Event::F3); break;
             case UiCommand::CONFIRM_SELECT: screen_->PostEvent(Event::Return); break;
             case UiCommand::BACK_CANCEL:    screen_->PostEvent(Event::Escape); break;
             case UiCommand::FOCUS_FILES:    screen_->PostEvent(Event::Special("focus_files")); break;
             case UiCommand::FOCUS_TAGS:     screen_->PostEvent(Event::Special("focus_tags")); break;
-            case UiCommand::OPEN_MIDI_MENU: screen_->PostEvent(Event::Special("menu_midi")); break;
-            case UiCommand::OPEN_LOGS:      screen_->PostEvent(Event::Special("view_logs")); break;
             case UiCommand::TAG_TOGGLE_0:   screen_->PostEvent(Event::Special("tag_0")); break;
             case UiCommand::TAG_TOGGLE_1:   screen_->PostEvent(Event::Special("tag_1")); break;
             case UiCommand::TAG_TOGGLE_2:   screen_->PostEvent(Event::Special("tag_2")); break;

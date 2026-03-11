@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
+#include <iostream>
 
 static const std::unordered_map<std::string, MidiInputType> StringToMidiType = {
     {"NOTE", MidiInputType::NOTE_ON},
@@ -42,6 +43,8 @@ bool MidiParser::loadMap(const std::string& filePath) {
             bindings[binding] = StringToUiCommand.at(cmdStr);
         }
     }
+
+    std::cerr << "MIDI map loaded successfully;\n";
 
     hasMapLoaded_ = true;
     return true;

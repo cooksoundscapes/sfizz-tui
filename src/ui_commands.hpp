@@ -5,6 +5,7 @@
     X(NAV_DOWN) \
     X(PAGE_UP) \
     X(PAGE_DOWN) \
+    X(BROWSE_MENU) \
     X(NAV_LEFT) \
     X(NAV_RIGHT) \
     X(CONFIRM_SELECT) \
