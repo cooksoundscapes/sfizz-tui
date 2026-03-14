@@ -1,5 +1,5 @@
 #include "CLI/CLI.hpp"
-#include "tui.hpp"
+#include "tui_core.hpp"
 #include "sfizz_client.hpp"
 #include "core/logger.hpp"
 #include <core/utils.hpp>
@@ -51,28 +51,28 @@ int main(int argc, char** argv)
     tui.onSfzSelected = [&](const std::string& fullPath) {
         sfizzApp.getEngine().loadSfzAsync(fullPath);
     };
-    tui.isEngineLoading = [&](){
+    tui.context().isEngineLoading = [&](){
         return sfizzApp.getEngine().isLoading();
     };
-    tui.getMidiDeviceName = [&](){
+    tui.context().getMidiDeviceName = [&](){
         return sfizzApp.getLastConnectedDevice();
     };
-    tui.getCpuLoad = [&](){
+    tui.context().getCpuLoad = [&](){
         return sfizzApp.getEngine().getLoad();
     };
-    tui.getEngineStatus = [&](){
+    tui.context().getEngineStatus = [&](){
         return sfizzApp.getJackStatus();
     };
-    tui.getMidiDevices = [&](){
+    tui.context().getMidiDevices = [&](){
         return sfizzApp.getAvailableMidiSources();
     };
-    tui.onMidiSourceSelected = [&](std::string source){
+    tui.context().onMidiSourceSelected = [&](std::string source){
         sfizzApp.setLastConnectedDevice(source);
     };
-    tui.getLogBuffer = [&](){
+    tui.context().getLogBuffer = [&](){
         return logger.getBufferView();
     };
-    tui.getActiveKeyswitch = [&](){
+    tui.context().getActiveKeyswitch = [&](){
         return sfizzApp.getEngine().getCurrentSwitch();
     };
 

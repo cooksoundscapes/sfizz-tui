@@ -18,7 +18,9 @@ core_dep = core_proj.get_variable('core_dep')
 
 srcs = files(
   'src/main.cpp',
-  'src/tui.cpp',
+  'src/tui_base.cpp',
+  'src/tui_core.cpp',
+  'src/tui_view.cpp', 
   'src/sfizz_engine.cpp',
   'src/sfizz_client.cpp',
   'src/midi_parser.cpp'

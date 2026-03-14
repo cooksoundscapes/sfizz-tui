@@ -17,6 +17,19 @@ public:
 
     void run();
 
+    struct ContextProxy {
+        std::function<void(const std::string&)>& onSfzSelected;
+        std::function<bool()>& isEngineLoading;
+        std::function<std::string()>& getMidiDeviceName;
+        std::function<float()>& getCpuLoad;
+        std::function<bool()>& getEngineStatus;
+        std::function<std::vector<std::string>()>& getMidiDevices;
+        std::function<void(const std::string&)>& onMidiSourceSelected;
+        std::function<std::string_view()>& getLogBuffer;
+        std::function<std::string()>& getActiveKeyswitch;
+    };
+    ContextProxy context();
+
     std::function<void(const std::string&)> onSfzSelected;
     std::function<bool()> isEngineLoading;
     std::function<std::string()> getMidiDeviceName;
@@ -52,11 +65,6 @@ private:
     bool showMidiSourcesModal_ = false;
     bool showLogs_ = false;
 
-    struct TagFilter {
-        std::string name;
-        uint64_t bit;
-        bool enabled = false;
-    };
     std::vector<TagFilter> availableTags_ = {
         {"FAVORITE", Tag::FAVORITE},
         {"STRINGS", Tag::STRINGS},

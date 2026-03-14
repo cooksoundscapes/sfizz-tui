@@ -13,10 +13,24 @@ using namespace ftxui;
 namespace fs = std::filesystem;
 
 TuiClient::TuiClient(std::string sfzDirectory)
-    : sfzDirectory_(std::move(sfzDirectory)) {
-        midiParser = std::make_unique<MidiParser>();
-    }
+    : sfzDirectory_(std::move(sfzDirectory))
+{
+    midiParser = std::make_unique<MidiParser>();
+}
 
+TuiClient::ContextProxy TuiClient::context() {
+    return {
+        .onSfzSelected = onSfzSelected,
+        .isEngineLoading = isEngineLoading,
+        .getMidiDeviceName = getMidiDeviceName,
+        .getCpuLoad = getCpuLoad,
+        .getEngineStatus = getEngineStatus,
+        .getMidiDevices = getMidiDevices,
+        .onMidiSourceSelected = onMidiSourceSelected,
+        .getLogBuffer = getLogBuffer,
+        .getActiveKeyswitch = getActiveKeyswitch
+    };
+}
 
 Component TuiClient::createHeader_() {
     return Renderer([&] {

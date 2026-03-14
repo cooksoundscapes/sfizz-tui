@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <string>
 
 enum Tag: uint64_t {
     NONE = 0,
@@ -12,6 +13,12 @@ enum Tag: uint64_t {
     TINES = 1 << 6,
     PERC = 1 << 7,
     PORTISHEAD = 1 << 8,
+};
+
+struct TagFilter {
+    std::string name;
+    uint64_t bit;
+    bool enabled = false;
 };
 
 struct SwitchEntry {
