@@ -34,7 +34,7 @@ public:
         Getter<const int&> getFrame;
         Getter<std::string> getSfzDir;
         Getter<std::vector<TagFilter>&> getTags;
-        Getter<const std::vector<std::string>&> getFilesList;
+        Getter<std::vector<std::string>&> getFilesList;
         Resolver<int, std::string> onSfzSelected;
     };
 
@@ -79,4 +79,5 @@ private:
     const int sfzFileMenuLineCount_ = 10;
 
     std::vector<std::string> midiSources_;
+    std::vector<std::string>* fileNames_;
 };

@@ -94,7 +94,8 @@ void TuiView::createSfzFileMenu_() {
     option.on_enter = [&] {
         selectedSfzFile_ = provider.onSfzSelected(selectedSfzIndex_);
     };
-    filesMenu = Menu(provider.getFilesList(), &selectedSfzIndex_, option);
+    fileNames_ = &provider.getFilesList();
+    filesMenu = Menu(fileNames_, &selectedSfzIndex_, option);
 
     tagsContainer = Container::Vertical({});
     for (auto& tag : provider.getTags()) {
@@ -110,7 +111,7 @@ void TuiView::createSfzFileMenu_() {
         tagsContainer
     });
    
-    sfzMenu = Renderer(splitLayout, [=, this] {
+    sfzMenu = Renderer(splitLayout, [&] {
         auto keySwitch = app.getActiveKeyswitch();
         auto dim = Terminal::Size();
         return vbox({

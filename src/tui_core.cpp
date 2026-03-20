@@ -32,7 +32,7 @@ void TuiClient::run() {
         .getTags = [this]() -> std::vector<TagFilter>& {
             return this->availableTags_;
         },
-        .getFilesList = [this]() -> const std::vector<std::string>& {
+        .getFilesList = [this]() -> std::vector<std::string>& {
             return this->fileNames_;
         },
         .onSfzSelected = [this](int i){
@@ -94,10 +94,7 @@ void TuiClient::scanDirectory() {
     std::sort(sfzFiles_.begin(), sfzFiles_.end(),
         [](const SfzFile& a, const SfzFile& b) { return a.displayName < b.displayName; }
     );
-    fileNames_.reserve(sfzFiles_.size());
-    for (const auto& file : sfzFiles_) {
-        fileNames_.push_back(file.displayName);
-    }
+    updateFilteredList_();
 }
 
 void TuiClient::updateFilteredList_() {
@@ -112,6 +109,8 @@ void TuiClient::updateFilteredList_() {
         if (t.enabled) activeMask |= t.bit;
     }
 
+    std::cerr << "---------------------\n";
+
     for (int i = 0; i < (int)sfzFiles_.size(); ++i) {
         if (activeMask == 0 || (sfzFiles_[i].tagMask & activeMask)) {
             std::string label = sfzFiles_[i].displayName;
@@ -119,6 +118,7 @@ void TuiClient::updateFilteredList_() {
             
             fileNames_.push_back(label);
             filteredIndices_.push_back(i);
+            std::cerr << "found " << label << '\n';
         }
     }
 }
