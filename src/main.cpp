@@ -12,15 +12,23 @@
 #include <string>
 
 static std::atomic<bool> running{true};
+static std::atomic<bool> signaled{false};
+
 
 static void signalHandler(int) {
     running = false;
 }
 
+static void customSigHandler(int) {
+    signaled = true;
+}
+
 int main(int argc, char** argv)
 {
+    // OS Setup -------------------
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
+    std::signal(SIGUSR1, customSigHandler);
 
     CLI::App app{"SfizzTUI - Terminal Sample Player"};
 
@@ -32,6 +40,8 @@ int main(int argc, char** argv)
     app.add_option("--midimap", mapPath, "MIDI Map file")->check(CLI::ExistingFile);
 
     CLI11_PARSE(app, argc, argv);
+
+    // Main classes ----------------
 
     Logger logger;
     logger.start();
@@ -85,6 +95,9 @@ int main(int argc, char** argv)
     });
 
     while (running) {
+        if (signaled.exchange(false)) {
+            std::cerr << "MIDI device connected!\n";
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 

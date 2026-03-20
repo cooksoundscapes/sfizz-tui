@@ -109,8 +109,6 @@ void TuiClient::updateFilteredList_() {
         if (t.enabled) activeMask |= t.bit;
     }
 
-    std::cerr << "---------------------\n";
-
     for (int i = 0; i < (int)sfzFiles_.size(); ++i) {
         if (activeMask == 0 || (sfzFiles_[i].tagMask & activeMask)) {
             std::string label = sfzFiles_[i].displayName;
@@ -118,7 +116,6 @@ void TuiClient::updateFilteredList_() {
             
             fileNames_.push_back(label);
             filteredIndices_.push_back(i);
-            std::cerr << "found " << label << '\n';
         }
     }
 }

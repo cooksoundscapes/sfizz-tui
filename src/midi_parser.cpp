@@ -23,9 +23,17 @@ bool MidiParser::loadMap(const std::string& filePath) {
 
     bindings.clear();
     std::string line;
+    bool atMappings = false;
 
     while (std::getline(file, line)) {
         if (line.empty() || line[0] == '#') continue;
+
+        if (line.find("[mappings]") != std::string::npos) {
+            atMappings = true;
+            continue;
+        }
+
+        if (!atMappings) continue;
 
         std::stringstream ss(line);
         std::string typeStr, cmdStr;
