@@ -9,9 +9,27 @@ project(
   ]
 )
 
-# dependências
-sfizz_dep = dependency('sfizz')
-ftxui_dep = dependency('ftxui')
+if host_machine.cpu_family() in ['arm', 'aarch64']
+
+  message('ARM detected - activating CPU isolation and looking for deps at /usr/local/lib')
+ 
+  add_global_arguments('-DENABLE_CPU_ISOLATION', language: 'cpp')
+	
+  cpp = meson.get_compiler('cpp')
+
+  ftxui_screen = cpp.find_library('ftxui-screen', dirs: ['/usr/local/lib'])
+  ftxui_dom    = cpp.find_library('ftxui-dom',    dirs: ['/usr/local/lib'])
+  ftxui_component = cpp.find_library('ftxui-component', dirs: ['/usr/local/lib'])
+
+  ftxui_deps = [ftxui_screen, ftxui_dom, ftxui_component]
+
+  sfizz_dep = cpp.find_library('sfizz', dirs: ['/usr/local/lib'])
+
+else
+  sfizz_dep = dependency('sfizz')
+  ftxui_deps = [dependency('ftxui')]
+  
+endif
 
 core_proj = subproject('core')
 core_dep = core_proj.get_variable('core_dep')
@@ -26,20 +44,11 @@ srcs = files(
   'src/midi_parser.cpp'
 )
 
-rt_isolation_args = []
-if host_machine.cpu_family() in ['arm', 'aarch64']
-  rt_isolation_args = ['-DENABLE_RT_CPU_ISOLATION']
-endif
 
 executable(
   'sfizz-tui',
   srcs,
   include_directories : include_directories('src'),
-  dependencies : [
-    core_dep,
-    sfizz_dep,
-    ftxui_dep,
-  ],
-  cpp_args: rt_isolation_args,
+  dependencies : [core_dep, sfizz_dep] + ftxui_deps,
   install: true
 )
