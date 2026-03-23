@@ -26,6 +26,11 @@ srcs = files(
   'src/midi_parser.cpp'
 )
 
+rt_isolation_args = []
+if host_machine.cpu_family() in ['arm', 'aarch64']
+  rt_isolation_args = ['-DENABLE_RT_CPU_ISOLATION']
+endif
+
 executable(
   'sfizz-tui',
   srcs,
@@ -35,5 +40,6 @@ executable(
     sfizz_dep,
     ftxui_dep,
   ],
+  cpp_args: rt_isolation_args,
   install: true
 )
