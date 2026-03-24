@@ -23,6 +23,9 @@ void TuiClient::run() {
         .updateFilteredList = [this](){
             this->updateFilteredList_();
         },
+        .requestAnimFrame = [this](){
+            screen_->RequestAnimationFrame();
+        },
         .getFrame = [this]() -> const int& {
             return this->frame_;
         },
@@ -40,9 +43,8 @@ void TuiClient::run() {
         }
     };
 
-    view = std::make_unique<TuiView>(std::move(app), std::move(provider));
-    
     scanDirectory();
+    view = std::make_unique<TuiView>(std::move(app), std::move(provider));
 
     TuiBase::run();
 }

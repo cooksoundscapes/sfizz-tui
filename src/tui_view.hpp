@@ -31,6 +31,7 @@ public:
         // internally defined by core
         Trigger advanceFrame;
         Trigger updateFilteredList;
+        Trigger requestAnimFrame;
         Getter<const int&> getFrame;
         Getter<std::string> getSfzDir;
         Getter<std::vector<TagFilter>&> getTags;
@@ -79,5 +80,5 @@ private:
     const int sfzFileMenuLineCount_ = 10;
 
     std::vector<std::string> midiSources_;
-    std::vector<std::string>* fileNames_;
+    std::vector<std::string>* fileNames_ = nullptr;
 };

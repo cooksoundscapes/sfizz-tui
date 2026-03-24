@@ -52,7 +52,7 @@ void TuiView::createLoggerView_() {
 
 void TuiView::createLoadingModal_() {
     loadingModal = Renderer([&] {
-        provider.advanceFrame();
+        // provider.advanceFrame();
         return vbox({
             text("loading...") | hcenter,
             spinner(18, provider.getFrame()) | hcenter | color(Color::Cyan),
@@ -164,6 +164,7 @@ Component TuiView::root() {
             showLogs_ = false;
             return true;
         }
+        provider.requestAnimFrame();
         return false;
     });
 }

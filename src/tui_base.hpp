@@ -16,4 +16,7 @@ protected:
     int frame_ = 0;
 
     virtual ftxui::Component prepareRoot() = 0;
+
+private:
+    int refresh_fps_ = 5;
 };

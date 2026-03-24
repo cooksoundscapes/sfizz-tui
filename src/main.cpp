@@ -1,7 +1,15 @@
 #include "CLI/CLI.hpp"
 #include "tui_core.hpp"
-#include "sfizz_client.hpp"
 #include "core/logger.hpp"
+
+#ifdef STUB_MODE
+#include "sfizz_client_stub.hpp"
+using SfizzJackAppType = StubSfizzApp;
+#else
+#include "sfizz_client.hpp"
+using SfizzJackAppType = SfizzJackApp;
+#endif
+
 #include <core/utils.hpp>
 #include <CLI/CLI.hpp>
 
@@ -46,7 +54,7 @@ int main(int argc, char** argv)
     Logger logger;
     logger.start();
 
-    SfizzJackApp sfizzApp;
+    SfizzJackAppType sfizzApp;
     if (!sfizzApp.open())
         return 1;
 
