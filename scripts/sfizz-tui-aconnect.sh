@@ -1,10 +1,11 @@
 #!/bin/bash
-# sfizz-midi-connect.sh
-# Lê ~/.config/sfizz/midi-connections.conf e conecta cada porta ao MIDI Through
 
+exec >> /tmp/sfizz-midi-connect.log 2>&1
+
+# sfizz-midi-connect.sh
 # instalaçao: sudo install -m 755 scripts/sfizz-tui-aconnect.sh /usr/local/bin/sfizz-tui-aconnect.sh
 
-CONF="$HOME/.config/sfizz/alsa-midi-connections.conf"
+CONF="$HOME/.config/sfizz-tui/alsa-midi-connections.conf"
 MIDI_THROUGH="14:0"
 
 if [ ! -f "$CONF" ]; then
