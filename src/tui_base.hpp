@@ -1,22 +1,28 @@
 #pragma once
 #include <ftxui/component/screen_interactive.hpp>
+#include "ftxui/component/loop.hpp"
+#include <optional>
+
 
 class TuiBase {
 public:
     virtual ~TuiBase() = default;
 
+    TuiBase() : screen_(ftxui::ScreenInteractive::TerminalOutput()) {}
+
     void run();
 
-    void clear() { if (screen_) screen_->Clear(); }
+    bool loopHasQuitted() { if (loop_) return loop_->HasQuitted(); return true; }
 
-    void postCustomEvent();
+    void clear() { screen_.Clear(); }
+
+    bool runOnce(bool);
 
 protected:
-    ftxui::ScreenInteractive* screen_ = nullptr;
-    int frame_ = 0;
+    ftxui::ScreenInteractive screen_;
+    std::optional<ftxui::Loop> loop_;
+
+    void init();
 
     virtual ftxui::Component prepareRoot() = 0;
-
-private:
-    int refresh_fps_ = 5;
 };

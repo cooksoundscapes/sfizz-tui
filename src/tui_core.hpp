@@ -16,7 +16,7 @@ public:
 
     std::function<void(const std::string&)> onSfzSelected;
 
-    void run();
+    void start();
     TuiView::AppContext& context() { return app; }
 
 private:

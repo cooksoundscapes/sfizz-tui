@@ -97,24 +97,21 @@ int main(int argc, char** argv)
     if (!sfizzApp.activate())
         return 1;
 
-    std::thread uiThread([&] {
-        tui.run();
-        running = false;
-    });
-
-    while (running) {
+    tui.start();
+    int frame = 0, fps = 30, refresh_fps = 5;
+    while (!tui.loopHasQuitted()) {
         if (signaled.exchange(false)) {
             std::cerr << "MIDI device connected!\n";
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        bool shouldRedraw = (frame % (fps / refresh_fps)) == 0;
+        tui.runOnce(shouldRedraw);
+        frame = (frame + 1) % fps;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000 / fps));
     }
 
     sfizzApp.close();
 
     logger.stop();
-
-    if (uiThread.joinable())
-        uiThread.join();
 
     return 0;
 }

@@ -29,10 +29,8 @@ public:
 
     struct UiContext {
         // internally defined by core
-        Trigger advanceFrame;
         Trigger updateFilteredList;
         Trigger requestAnimFrame;
-        Getter<const int&> getFrame;
         Getter<std::string> getSfzDir;
         Getter<std::vector<TagFilter>&> getTags;
         Getter<std::vector<std::string>&> getFilesList;

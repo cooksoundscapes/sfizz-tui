@@ -55,7 +55,7 @@ void TuiView::createLoadingModal_() {
         // provider.advanceFrame();
         return vbox({
             text("loading...") | hcenter,
-            spinner(18, provider.getFrame()) | hcenter | color(Color::Cyan),
+            spinner(18, 0) | hcenter | color(Color::Cyan),
         })
         | size(WIDTH, GREATER_THAN, 30)
         | borderDouble
@@ -164,7 +164,6 @@ Component TuiView::root() {
             showLogs_ = false;
             return true;
         }
-        provider.requestAnimFrame();
         return false;
     });
 }

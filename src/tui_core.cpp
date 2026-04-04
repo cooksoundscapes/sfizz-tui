@@ -4,30 +4,26 @@
 
 #include "tui_core.hpp"
 #include "sfz_parser.hpp"
+#include "tui_base.hpp"
 
 using namespace ftxui;
 namespace fs = std::filesystem;
 
 
 TuiClient::TuiClient(std::string sfzDirectory)
-    : sfzDirectory_(std::move(sfzDirectory))
+    : TuiBase()
+    ,sfzDirectory_(std::move(sfzDirectory))
 {
     midiParser = std::make_unique<MidiParser>();
 }
 
-void TuiClient::run() {
+void TuiClient::start() {
     provider = {
-        .advanceFrame = [this](){
-            this->frame_++;
-        },
         .updateFilteredList = [this](){
             this->updateFilteredList_();
         },
         .requestAnimFrame = [this](){
-            screen_->RequestAnimationFrame();
-        },
-        .getFrame = [this]() -> const int& {
-            return this->frame_;
+            screen_.RequestAnimationFrame();
         },
         .getSfzDir = [this](){
             return this->sfzDirectory_;
@@ -46,7 +42,7 @@ void TuiClient::run() {
     scanDirectory();
     view = std::make_unique<TuiView>(std::move(app), std::move(provider));
 
-    TuiBase::run();
+    TuiBase::init();
 }
 
 std::string TuiClient::loadSfz_(int idx) {
@@ -139,39 +135,39 @@ void TuiClient::handleMidiEvent(MidiEvent e) {
 
     if (cmd != UiCommand::NONE && isDown) {
         switch(cmd) {
-            case UiCommand::NAV_DOWN:       screen_->PostEvent(Event::ArrowDown); break;
-            case UiCommand::NAV_UP:         screen_->PostEvent(Event::ArrowUp); break;
-            case UiCommand::NAV_LEFT:       screen_->PostEvent(Event::ArrowLeft); break;
-            case UiCommand::NAV_RIGHT:      screen_->PostEvent(Event::ArrowRight); break;
-            case UiCommand::PAGE_UP:        screen_->PostEvent(Event::PageUp); break;
-            case UiCommand::PAGE_DOWN:      screen_->PostEvent(Event::PageDown); break;
+            case UiCommand::NAV_DOWN:       screen_.PostEvent(Event::ArrowDown); break;
+            case UiCommand::NAV_UP:         screen_.PostEvent(Event::ArrowUp); break;
+            case UiCommand::NAV_LEFT:       screen_.PostEvent(Event::ArrowLeft); break;
+            case UiCommand::NAV_RIGHT:      screen_.PostEvent(Event::ArrowRight); break;
+            case UiCommand::PAGE_UP:        screen_.PostEvent(Event::PageUp); break;
+            case UiCommand::PAGE_DOWN:      screen_.PostEvent(Event::PageDown); break;
             case UiCommand::BROWSE_MENU: {
                 int delta = (int)e.data2 - 64;
                 if (delta > 0) {
                     for (int i = 0; i < std::abs(delta); ++i) {
-                        screen_->PostEvent(Event::ArrowDown);
+                        screen_.PostEvent(Event::ArrowDown);
                     }
                 } 
                 else if (delta < 0) {
                     for (int i = 0; i < std::abs(delta); ++i) {
-                        screen_->PostEvent(Event::ArrowUp);
+                        screen_.PostEvent(Event::ArrowUp);
                     }
                 }
-                screen_->PostEvent(Event::Return);
+                screen_.PostEvent(Event::Return);
                 break;
             }
-            case UiCommand::OPEN_MIDI_MENU: screen_->PostEvent(Event::F2); break;
-            case UiCommand::OPEN_LOGS:      screen_->PostEvent(Event::F3); break;
-            case UiCommand::CONFIRM_SELECT: screen_->PostEvent(Event::Return); break;
-            case UiCommand::BACK_CANCEL:    screen_->PostEvent(Event::Escape); break;
-            case UiCommand::FOCUS_FILES:    screen_->PostEvent(Event::Special("focus_files")); break;
-            case UiCommand::FOCUS_TAGS:     screen_->PostEvent(Event::Special("focus_tags")); break;
-            case UiCommand::TAG_TOGGLE_0:   screen_->PostEvent(Event::Special("tag_0")); break;
-            case UiCommand::TAG_TOGGLE_1:   screen_->PostEvent(Event::Special("tag_1")); break;
-            case UiCommand::TAG_TOGGLE_2:   screen_->PostEvent(Event::Special("tag_2")); break;
-            case UiCommand::TAG_TOGGLE_3:   screen_->PostEvent(Event::Special("tag_3")); break;
-            case UiCommand::TAG_CLEAR_ALL:  screen_->PostEvent(Event::Special("tag_clear")); break;
-            case UiCommand::ENGINE_RELOAD:  screen_->PostEvent(Event::Special("reload")); break;
+            case UiCommand::OPEN_MIDI_MENU: screen_.PostEvent(Event::F2); break;
+            case UiCommand::OPEN_LOGS:      screen_.PostEvent(Event::F3); break;
+            case UiCommand::CONFIRM_SELECT: screen_.PostEvent(Event::Return); break;
+            case UiCommand::BACK_CANCEL:    screen_.PostEvent(Event::Escape); break;
+            case UiCommand::FOCUS_FILES:    screen_.PostEvent(Event::Special("focus_files")); break;
+            case UiCommand::FOCUS_TAGS:     screen_.PostEvent(Event::Special("focus_tags")); break;
+            case UiCommand::TAG_TOGGLE_0:   screen_.PostEvent(Event::Special("tag_0")); break;
+            case UiCommand::TAG_TOGGLE_1:   screen_.PostEvent(Event::Special("tag_1")); break;
+            case UiCommand::TAG_TOGGLE_2:   screen_.PostEvent(Event::Special("tag_2")); break;
+            case UiCommand::TAG_TOGGLE_3:   screen_.PostEvent(Event::Special("tag_3")); break;
+            case UiCommand::TAG_CLEAR_ALL:  screen_.PostEvent(Event::Special("tag_clear")); break;
+            case UiCommand::ENGINE_RELOAD:  screen_.PostEvent(Event::Special("reload")); break;
             default: break;
         }
     }
